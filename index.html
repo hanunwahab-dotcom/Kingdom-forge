@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>⚔️ Kingdom Forge</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0a06;
+  --parchment: #1a1408;
+  --surface: #1f1a0e;
+  --surface2: #2a2210;
+  --border: #4a3a1a;
+  --border2: #6b5520;
+  --gold: #d4a017;
+  --gold2: #f0c84a;
+  --red: #8b1a1a;
+  --red2: #c0392b;
+  --green: #1a4a1a;
+  --green2: #27ae60;
+  --blue2: #2980b9;
+  --text: #e8d5a0;
+  --muted: #8a7550;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Pro', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image: radial-gradient(ellipse at 20% 20%, rgba(212,160,23,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(139,26,26,0.04) 0%, transparent 50%);
+}
+
+/* HEADER */
+header {
+  background: linear-gradient(180deg, #1a1000 0%, var(--parchment) 100%);
+  border-bottom: 2px solid var(--border2);
+  padding: 12px 16px;
+  position: sticky; top:0; z-index:50;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+}
+.header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.game-title { font-family:'Cinzel',serif; font-size:22px; font-weight:900; color:var(--gold2); text-shadow:0 0 20px rgba(212,160,23,0.4); letter-spacing:2px; }
+.game-title span { color:var(--text); font-weight:400; font-size:13px; display:block; letter-spacing:3px; }
+.resources { display:flex; gap:8px; flex-wrap:wrap; }
+.res { display:flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px; min-width:80px; }
+.res .icon { font-size:16px; }
+.res .val { font-family:'Cinzel',serif; font-size:13px; color:var(--gold2); font-weight:600; }
+.res .lbl { font-size:10px; color:var(--muted); display:block; }
+.res-inner { display:flex; flex-direction:column; }
+
+/* LAYOUT */
+.game-layout { display:grid; grid-template-columns:1fr 300px; gap:0; min-height:calc(100vh - 120px); position:relative; z-index:1; }
+
+/* MAP */
+.map-area { padding:20px; background:radial-gradient(ellipse at 50% 50%, rgba(30,20,5,0.9) 0%, rgba(13,10,6,0.95) 100%); border-right:2px solid var(--border); overflow:hidden; }
+.map-title { font-family:'Cinzel',serif; font-size:11px; letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.map-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* BUILDING GRID */
+.village-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:480px; }
+
+.building-slot {
+  aspect-ratio:1;
+  background:var(--surface);
+  border:2px solid var(--border);
+  border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position:relative; overflow:hidden; padding:12px; text-align:center;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.building-slot:not(.locked):hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.6); }
+.building-slot.locked { opacity:0.4; filter:grayscale(1); }
+
+.building-icon { font-size:36px; margin-bottom:6px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8)); }
+.building-name { font-family:'Cinzel',serif; font-size:11px; color:var(--gold); font-weight:600; letter-spacing:0.5px; }
+.building-level { font-size:11px; color:var(--muted); margin-top:2px; }
+.building-prod { font-size:10px; color:var(--green2); margin-top:4px; background:rgba(39,174,96,0.1); padding:2px 6px; border-radius:4px; }
+.building-locked-label { font-size:10px; color:var(--muted); }
+
+/* UPGRADE BUTTON WITH RING */
+.upgrade-ring-btn {
+  position:absolute;
+  bottom:6px; right:6px;
+  width:32px; height:32px;
+  border-radius:50%;
+  background: var(--surface2);
+  border:none;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px;
+  transition: transform 0.15s;
+}
+.upgrade-ring-btn:hover { transform:scale(1.15); }
+.upgrade-ring-btn svg {
+  position:absolute;
+  top:0; left:0;
+  width:32px; height:32px;
+  transform:rotate(-90deg);
+  pointer-events:none;
+}
+.upgrade-ring-btn svg circle {
+  fill:none;
+  stroke-width:3;
+  stroke-linecap:round;
+  transition: stroke-dashoffset 0.4s, stroke 0.4s;
+}
+.ring-bg { stroke: #333; }
+.ring-fill { stroke: var(--gold2); }
+
+/* ARMY */
+.army-section { margin-top:24px; }
+.army-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.unit-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px; flex:1; min-width:120px; }
+.unit-icon { font-size:24px; }
+.unit-info .unit-name { font-family:'Cinzel',serif; font-size:12px; color:var(--gold); }
+.unit-info .unit-count { font-size:13px; color:var(--text); }
+.unit-info .unit-cost { font-size:10px; color:var(--muted); }
+.recruit-btn { margin-left:auto; background:var(--red); border:1px solid var(--red2); color:var(--text); font-family:'Cinzel',serif; font-size:10px; padding:4px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+.recruit-btn:hover { background:var(--red2); }
+
+/* BATTLE */
+.battle-area { margin-top:20px; }
+.enemy-card { background:linear-gradient(135deg,#1a0505,#0d0000); border:2px solid #5a1a1a; border-radius:10px; padding:16px; display:flex; align-items:center; gap:14px; margin-bottom:10px; cursor:pointer; transition:all 0.2s; }
+.enemy-card:hover { border-color:var(--red2); box-shadow:0 0 16px rgba(192,57,43,0.2); }
+.enemy-icon { font-size:40px; }
+.enemy-info { flex:1; }
+.enemy-name { font-family:'Cinzel',serif; font-size:14px; color:#e74c3c; margin-bottom:4px; }
+.enemy-hp-bar { height:6px; background:#2a0000; border-radius:3px; overflow:hidden; margin-bottom:4px; }
+.enemy-hp-fill { height:100%; background:linear-gradient(90deg,#c0392b,#e74c3c); transition:width 0.5s; }
+.enemy-stats { font-size:11px; color:var(--muted); }
+.attack-btn { background:linear-gradient(135deg,#8b1a1a,#c0392b); border:1px solid #e74c3c; color:white; font-family:'Cinzel',serif; font-size:12px; padding:8px 14px; border-radius:8px; cursor:pointer; transition:all 0.2s; }
+.attack-btn:hover { filter:brightness(1.2); }
+
+/* SIDEBAR */
+.sidebar { background:var(--parchment); padding:16px; overflow-y:auto; max-height:calc(100vh - 120px); }
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; }
+.panel-title { font-family:'Cinzel',serif; font-size:12px; letter-spacing:2px; color:var(--gold); text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+/* UPGRADES */
+.upgrade-item { display:flex; align-items:center; gap:10px; padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; background:var(--surface2); }
+.upgrade-icon { font-size:20px; }
+.upgrade-info { flex:1; }
+.upgrade-name { font-family:'Cinzel',serif; font-size:12px; color:var(--gold); }
+.upgrade-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+.upgrade-cost { font-size:11px; color:var(--gold2); }
+.upgrade-btn { background:linear-gradient(135deg,var(--gold) 0%,#8b6914 100%); border:none; color:#1a0a00; font-family:'Cinzel',serif; font-size:10px; font-weight:700; padding:6px 10px; border-radius:6px; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+.upgrade-btn:hover { filter:brightness(1.2); transform:scale(1.05); }
+.upgrade-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; filter:none; }
+
+/* QUESTS */
+.quest-item { padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:var(--surface2); }
+.quest-name { font-family:'Cinzel',serif; font-size:12px; color:var(--gold2); margin-bottom:4px; }
+.quest-desc { font-size:11px; color:var(--muted); margin-bottom:6px; }
+.quest-progress-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:4px; }
+.quest-progress-fill { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold2)); transition:width 0.5s; }
+.quest-reward { font-size:10px; color:var(--green2); }
+.quest-claim-btn { margin-top:6px; background:linear-gradient(135deg,var(--green),#1a6a1a); border:1px solid var(--green2); color:var(--text); font-family:'Cinzel',serif; font-size:11px; padding:5px 12px; border-radius:6px; cursor:pointer; transition:all 0.2s; }
+.quest-claim-btn:hover { filter:brightness(1.3); }
+
+/* LOG */
+.log-area { height:120px; overflow-y:auto; font-size:11px; color:var(--muted); line-height:1.8; }
+.log-entry { padding:2px 0; border-bottom:1px solid rgba(74,58,26,0.3); }
+.log-entry.good { color:var(--green2); }
+.log-entry.bad { color:var(--red2); }
+.log-entry.gold { color:var(--gold2); }
+
+/* KING */
+.king-bar { display:flex; align-items:center; gap:10px; background:linear-gradient(135deg,rgba(212,160,23,0.08),transparent); border:1px solid var(--border2); border-radius:8px; padding:10px 14px; margin-bottom:14px; }
+.king-icon { font-size:28px; }
+.king-info .king-name { font-family:'Cinzel',serif; font-size:13px; color:var(--gold2); }
+.king-info .king-title { font-size:11px; color:var(--muted); }
+.king-xp-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-top:4px; width:100px; }
+.king-xp-fill { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold2)); transition:width 0.5s; }
+
+/* DAY TRANSITION */
+.day-transition {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.85);
+  z-index:500;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.4s;
+}
+.day-transition.show { opacity:1; pointer-events:all; }
+.day-box {
+  text-align:center;
+  background:var(--surface);
+  border:2px solid var(--border2);
+  border-radius:20px;
+  padding:40px 60px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.9), 0 0 40px rgba(212,160,23,0.1);
+}
+.day-from { font-family:'Cinzel',serif; font-size:40px; font-weight:900; color:var(--muted); }
+.day-arrow { font-size:32px; color:var(--gold); margin:8px 0; animation:pulse 0.6s infinite alternate; }
+.day-to { font-family:'Cinzel',serif; font-size:48px; font-weight:900; color:var(--gold2); text-shadow:0 0 30px rgba(240,200,74,0.5); }
+.day-label { font-size:13px; color:var(--muted); letter-spacing:3px; margin-top:8px; text-transform:uppercase; }
+
+/* QUEST NOTIFICATION BANNER */
+.quest-notif {
+  position:fixed;
+  top:130px; right:20px;
+  background:linear-gradient(135deg,#1a2a1a,#0d1a0d);
+  border:2px solid var(--green2);
+  border-radius:12px;
+  padding:14px 18px;
+  z-index:400;
+  max-width:280px;
+  transform:translateX(320px);
+  transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  box-shadow:0 4px 20px rgba(0,0,0,0.8), 0 0 20px rgba(39,174,96,0.2);
+}
+.quest-notif.show { transform:translateX(0); }
+.quest-notif-title { font-family:'Cinzel',serif; font-size:13px; color:var(--green2); margin-bottom:4px; }
+.quest-notif-name { font-size:12px; color:var(--text); margin-bottom:8px; }
+.quest-notif-claim { background:linear-gradient(135deg,var(--green),#1a6a1a); border:1px solid var(--green2); color:var(--text); font-family:'Cinzel',serif; font-size:11px; padding:6px 14px; border-radius:6px; cursor:pointer; width:100%; transition:all 0.2s; }
+.quest-notif-claim:hover { filter:brightness(1.3); }
+
+/* MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--surface); border:2px solid var(--border2); border-radius:16px; padding:28px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.9); }
+.modal h2 { font-family:'Cinzel',serif; font-size:18px; color:var(--gold2); margin-bottom:6px; }
+.modal p { font-size:13px; color:var(--muted); margin-bottom:16px; }
+.modal-costs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.modal-cost { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:6px 12px; font-size:12px; color:var(--gold); }
+.modal-cost.cant-afford { color:var(--red2); border-color:var(--red2); }
+.modal-btns { display:flex; gap:10px; }
+.btn-cancel { flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-family:'Cinzel',serif; font-size:13px; padding:10px; border-radius:8px; cursor:pointer; }
+.btn-confirm { flex:2; background:linear-gradient(135deg,var(--gold) 0%,#8b6914 100%); border:none; color:#1a0a00; font-family:'Cinzel',serif; font-size:13px; font-weight:700; padding:10px; border-radius:8px; cursor:pointer; transition:all 0.2s; }
+.btn-confirm:hover { filter:brightness(1.1); }
+.btn-confirm:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* NOTIF */
+.notif { position:fixed; top:20px; right:20px; background:var(--surface); border:1px solid var(--gold); border-radius:10px; padding:12px 18px; font-family:'Cinzel',serif; font-size:13px; color:var(--gold2); z-index:300; transform:translateX(200%); transition:transform 0.3s; box-shadow:0 4px 20px rgba(0,0,0,0.8); }
+.notif.show { transform:translateX(0); }
+
+/* FLOAT TEXT */
+.float-text { position:fixed; font-family:'Cinzel',serif; font-size:14px; font-weight:700; pointer-events:none; z-index:400; animation:floatUp 1.2s ease forwards; }
+@keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-60px) scale(0.8)} }
+@keyframes pulse { 0%{opacity:1} 100%{opacity:0.5} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+@media(max-width:700px){ .game-layout{grid-template-columns:1fr;} .sidebar{max-height:none;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="game-title">⚔️ Kingdom Forge<span>ORTAÇAĞ İMPARATORLUĞU</span></div>
+    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--muted)" id="dayCounter">🌙 Gün 1</div>
+  </div>
+  <div class="resources">
+    <div class="res"><span class="icon">🌾</span><div class="res-inner"><span class="val" id="resFood">50</span><span class="lbl">Yiyecek</span></div></div>
+    <div class="res"><span class="icon">🪵</span><div class="res-inner"><span class="val" id="resWood">30</span><span class="lbl">Tahta</span></div></div>
+    <div class="res"><span class="icon">🪨</span><div class="res-inner"><span class="val" id="resStone">20</span><span class="lbl">Taş</span></div></div>
+    <div class="res"><span class="icon">💰</span><div class="res-inner"><span class="val" id="resGold">100</span><span class="lbl">Altın</span></div></div>
+    <div class="res"><span class="icon">👥</span><div class="res-inner"><span class="val" id="resPop">10</span><span class="lbl">Nüfus</span></div></div>
+  </div>
+</header>
+
+<div class="game-layout">
+  <div class="map-area">
+    <div class="map-title">🏰 Krallığın</div>
+    <div class="village-grid" id="villageGrid"></div>
+    <div class="army-section">
+      <div class="map-title" style="margin-top:8px">⚔️ Ordun</div>
+      <div class="army-row" id="armyRow"></div>
+    </div>
+    <div class="battle-area">
+      <div class="map-title">🗺️ Düşman Bölgeleri</div>
+      <div id="enemyList"></div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="king-bar">
+      <div class="king-icon">👑</div>
+      <div class="king-info">
+        <div class="king-name">Kral</div>
+        <div class="king-title" id="kingTitle">Köy Beyi</div>
+        <div class="king-xp-bar"><div class="king-xp-fill" id="kingXpFill" style="width:0%"></div></div>
+      </div>
+      <div style="margin-left:auto;font-family:'Cinzel',serif;font-size:11px;color:var(--gold)">Lv.<span id="kingLevel">1</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">⚒️ Yükseltmeler</div>
+      <div id="upgradeList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">📜 Görevler</div>
+      <div id="questList"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">📖 Krallık Günlüğü</div>
+      <div class="log-area" id="logArea"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY TRANSITION -->
+<div class="day-transition" id="dayTransition">
+  <div class="day-box">
+    <div class="day-from" id="dtFrom">1</div>
+    <div class="day-arrow">↓</div>
+    <div class="day-to" id="dtTo">2</div>
+    <div class="day-label">🌙 Yeni Gün Başlıyor</div>
+  </div>
+</div>
+
+<!-- QUEST NOTIFICATION -->
+<div class="quest-notif" id="questNotif">
+  <div class="quest-notif-title">📜 Görev Tamamlandı!</div>
+  <div class="quest-notif-name" id="questNotifName"></div>
+  <div style="font-size:11px;color:var(--green2);margin-bottom:8px" id="questNotifReward"></div>
+  <button class="quest-notif-claim" id="questNotifClaim">🎁 Ödülü Al</button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle"></h2>
+    <p id="modalDesc"></p>
+    <div class="modal-costs" id="modalCosts"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">İptal</button>
+      <button class="btn-confirm" id="modalConfirm">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ===================== STATE =====================
+const RING_R = 13, RING_C = Math.PI * 2 * RING_R;
+
+const state = {
+  day: 1,
+  resources: { food:50, wood:30, stone:20, gold:100, pop:10 },
+  king: { level:1, xp:0, xpNeeded:100 },
+  boosts: {},
+  pendingQuestId: null,
+
+  buildings: [
+    { id:'farm',   name:'Çiftlik',    icon:'🌾', level:1, maxLevel:10, prod:{food:2},  baseCost:{wood:20,stone:10},       locked:false, desc:'Yiyecek üretir' },
+    { id:'lumber', name:'Kereste',    icon:'🪵', level:1, maxLevel:10, prod:{wood:1},  baseCost:{food:15,stone:10},       locked:false, desc:'Tahta üretir' },
+    { id:'quarry', name:'Taş Ocağı',  icon:'🪨', level:1, maxLevel:10, prod:{stone:1}, baseCost:{food:15,wood:20},        locked:false, desc:'Taş üretir' },
+    { id:'market', name:'Pazar',      icon:'🏪', level:1, maxLevel:10, prod:{gold:3},  baseCost:{wood:30,stone:20},       locked:false, desc:'Altın üretir' },
+    { id:'barracks',name:'Kışla',     icon:'⚔️', level:0, maxLevel:10, prod:{},        baseCost:{wood:50,stone:40,gold:30},locked:true,  desc:'Asker eğitir' },
+    { id:'castle', name:'Kale',       icon:'🏰', level:0, maxLevel:5,  prod:{},        baseCost:{wood:100,stone:80,gold:60},locked:true, desc:'Krallığı korur' },
+    { id:'blacksmith',name:'Demirci', icon:'🔨', level:0, maxLevel:10, prod:{},        baseCost:{wood:40,stone:30,gold:20},locked:true,  desc:'Silah üretir' },
+    { id:'church',  name:'Kilise',    icon:'⛪', level:0, maxLevel:5,  prod:{},        baseCost:{wood:60,stone:50,gold:40},locked:true,  desc:'Mutluluk artar' },
+    { id:'tower',   name:'Gözetleme', icon:'🗼', level:0, maxLevel:5,  prod:{},        baseCost:{wood:80,stone:60,gold:50},locked:true,  desc:'Düşman tespiti' },
+  ],
+
+  units: [
+    { id:'peasant', name:'Köylü',   icon:'🧑‍🌾', count:5, cost:{food:10,gold:5},             power:1,  locked:false },
+    { id:'soldier', name:'Asker',   icon:'🪖',  count:0, cost:{food:20,gold:15,wood:5},      power:5,  locked:true  },
+    { id:'knight',  name:'Şövalye', icon:'🏇',  count:0, cost:{food:40,gold:40,stone:10},    power:15, locked:true  },
+    { id:'archer',  name:'Okçu',    icon:'🏹',  count:0, cost:{food:15,gold:10,wood:10},     power:8,  locked:true  },
+    { id:'mage',    name:'Büyücü',  icon:'🧙',  count:0, cost:{food:30,gold:60,stone:20},    power:20, locked:true  },
+  ],
+
+  enemies: [
+    { id:'bandits',  name:'Haydutlar',     icon:'🗡️', hp:100, maxHp:100, power:3,  reward:{gold:20,food:10},     respawn:60  },
+    { id:'wolves',   name:'Kurt Sürüsü',   icon:'🐺', hp:150, maxHp:150, power:5,  reward:{food:30,wood:15},     respawn:90  },
+    { id:'orcs',     name:'Ork Kabilesi',  icon:'👹', hp:300, maxHp:300, power:12, reward:{gold:60,stone:30},    respawn:120 },
+    { id:'dragon',   name:'Ejderha',       icon:'🐉', hp:800, maxHp:800, power:30, reward:{gold:200,stone:100},  respawn:200 },
+    { id:'darkking', name:'Karanlık Kral', icon:'💀', hp:500, maxHp:500, power:20, reward:{gold:150,food:80},    respawn:150 },
+  ].map(e => ({...e, defeated:false, respawnTick:0})),
+
+  upgrades: [
+    { id:'plow',     name:'Sabanı Geliştir',  icon:'🌱', desc:'Çiftlik +50% üretim',   baseCost:{gold:50,wood:20},  times:0, maxTimes:5, effect:'farm_boost'   },
+    { id:'sharpaxe', name:'Keskin Balta',     icon:'🪓', desc:'Kereste +50% üretim',   baseCost:{gold:40,stone:15}, times:0, maxTimes:5, effect:'lumber_boost'  },
+    { id:'ironpick', name:'Demir Kazma',      icon:'⛏️', desc:'Taş Ocağı +50% üretim', baseCost:{gold:40,wood:15},  times:0, maxTimes:5, effect:'quarry_boost'  },
+    { id:'roads',    name:'Yol Yap',          icon:'🛤️', desc:'Altın üretimi +2/sn',   baseCost:{gold:80,stone:40}, times:0, maxTimes:5, effect:'gold_boost'    },
+    { id:'training', name:'Asker Eğitimi',    icon:'🎯', desc:'Tüm birlik gücü +2',    baseCost:{gold:100,food:50}, times:0, maxTimes:5, effect:'unit_boost'    },
+    { id:'walls',    name:'Surlar',           icon:'🧱', desc:'Savunma +10',            baseCost:{stone:80,gold:60}, times:0, maxTimes:3, effect:'defense_boost' },
+  ],
+
+  quests: [],
+  questPool: [
+    { id:'q_gold1',    name:'Hazine Peşinde',   desc:'200 altın topla',       target:'gold',    needed:200,  reward:{gold:50,food:30}    },
+    { id:'q_wood1',    name:'Kereste Ustası',    desc:'80 tahta topla',        target:'wood',    needed:80,   reward:{gold:30,food:20}    },
+    { id:'q_stone1',   name:'Taş Toplayıcı',    desc:'60 taş topla',          target:'stone',   needed:60,   reward:{gold:25,wood:30}    },
+    { id:'q_soldier1', name:'Ordu Kur',          desc:'5 asker eğit',          target:'soldiers',needed:5,   reward:{gold:50}            },
+    { id:'q_bandits',  name:'Haydutları Def Et', desc:'Haydutları yen',        target:'bandits', needed:1,    reward:{gold:80,stone:30}   },
+    { id:'q_wolves',   name:'Kurt Avcısı',       desc:'Kurt sürüsünü yen',     target:'wolves',  needed:1,    reward:{food:60,gold:40}    },
+    { id:'q_orcs',     name:'Ork Katili',        desc:'Ork kabilesini yen',    target:'orcs',    needed:1,    reward:{gold:120,stone:60}  },
+    { id:'q_pop1',     name:'Büyüyen Şehir',     desc:'30 nüfusa ulaş',        target:'pop',     needed:30,   reward:{gold:40,food:50}    },
+    { id:'q_farm1',    name:'Çiftçi',            desc:'Çiftliği Lv.3 yap',     target:'bldg_farm',needed:3,   reward:{gold:35,wood:20}    },
+    { id:'q_market1',  name:'Tüccar',            desc:'Pazarı Lv.3 yap',       target:'bldg_market',needed:3, reward:{gold:60}           },
+    { id:'q_gold2',    name:'Altın Madeni',      desc:'500 altın topla',       target:'gold',    needed:500,  reward:{gold:100,stone:50}  },
+    { id:'q_knight1',  name:'Şövalye Ordusu',    desc:'3 şövalye eğit',        target:'knights', needed:3,    reward:{gold:100,food:60}   },
+    { id:'q_dragon',   name:'Ejderha Avcısı',    desc:'Ejderhayı yen',         target:'dragon',  needed:1,    reward:{gold:300,stone:150} },
+  ],
+};
+
+// ===================== QUEST SYSTEM =====================
+function generateQuests() {
+  const pool = state.questPool.filter(q => !state.quests.find(aq => aq.id === q.id && !aq.claimed));
+  const shuffled = pool.sort(()=>Math.random()-0.5);
+  const newOnes = shuffled.slice(0,4).map(q => ({...q, progress:0, completed:false, claimed:false}));
+  state.quests = [...state.quests.filter(q=>!q.claimed), ...newOnes].slice(0,5);
+}
+
+function getQuestCurrent(q) {
+  if (q.target==='gold')          return Math.floor(state.resources.gold);
+  if (q.target==='wood')          return Math.floor(state.resources.wood);
+  if (q.target==='stone')         return Math.floor(state.resources.stone);
+  if (q.target==='pop')           return Math.floor(state.resources.pop);
+  if (q.target==='soldiers')      return state.units.find(u=>u.id==='soldier')?.count||0;
+  if (q.target==='knights')       return state.units.find(u=>u.id==='knight')?.count||0;
+  if (q.target==='bandits')       return state.enemies.find(e=>e.id==='bandits')?.defeated?1:0;
+  if (q.target==='wolves')        return state.enemies.find(e=>e.id==='wolves')?.defeated?1:0;
+  if (q.target==='orcs')          return state.enemies.find(e=>e.id==='orcs')?.defeated?1:0;
+  if (q.target==='dragon')        return state.enemies.find(e=>e.id==='dragon')?.defeated?1:0;
+  if (q.target==='bldg_farm')     return state.buildings.find(b=>b.id==='farm')?.level||0;
+  if (q.target==='bldg_market')   return state.buildings.find(b=>b.id==='market')?.level||0;
+  return 0;
+}
+
+function checkQuests() {
+  state.quests.forEach(q => {
+    if (q.completed || q.claimed) return;
+    const cur = getQuestCurrent(q);
+    if (cur >= q.needed) {
+      q.completed = true;
+      showQuestNotif(q);
+    }
+  });
+}
+
+let questNotifQueue = [];
+let questNotifShowing = false;
+
+function showQuestNotif(q) {
+  questNotifQueue.push(q);
+  if (!questNotifShowing) processQuestNotifQueue();
+}
+
+function processQuestNotifQueue() {
+  if (questNotifQueue.length === 0) { questNotifShowing = false; return; }
+  questNotifShowing = true;
+  const q = questNotifQueue.shift();
+  const notif = document.getElementById('questNotif');
+  const rewardStr = Object.entries(q.reward).map(([k,v])=>`+${v}${k==='food'?'🌾':k==='wood'?'🪵':k==='stone'?'🪨':'💰'}`).join(' ');
+  document.getElementById('questNotifName').textContent = q.name;
+  document.getElementById('questNotifReward').textContent = rewardStr;
+  document.getElementById('questNotifClaim').onclick = () => {
+    claimQuest(q.id);
+    notif.classList.remove('show');
+    setTimeout(processQuestNotifQueue, 400);
+  };
+  state.pendingQuestId = q.id;
+  notif.classList.add('show');
+}
+
+function claimQuest(id) {
+  const q = state.quests.find(x=>x.id===id);
+  if (!q || q.claimed) return;
+  q.claimed = true;
+  Object.entries(q.reward).forEach(([k,v])=>{ state.resources[k]=(state.resources[k]||0)+v; });
+  addLog(`Görev ödülü alındı: ${q.name}!`, 'gold');
+  gainXP(30);
+  // refresh quests if mostly done
+  const active = state.quests.filter(x=>!x.claimed);
+  if (active.length <= 1) { setTimeout(generateQuests,500); }
+  renderAll();
+}
+
+// ===================== HELPERS =====================
+function canAfford(cost) { return Object.entries(cost).every(([k,v])=>state.resources[k]>=v); }
+function spend(cost) { Object.entries(cost).forEach(([k,v])=>state.resources[k]-=v); }
+
+function resIcon(k) { return k==='food'?'🌾':k==='wood'?'🪵':k==='stone'?'🪨':'💰'; }
+function costStr(cost) { return Object.entries(cost).map(([k,v])=>`${v}${resIcon(k)}`).join(' '); }
+
+function showNotif(msg, color='var(--gold2)') {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.style.color=color; n.style.borderColor=color;
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t=setTimeout(()=>n.classList.remove('show'),2500);
+}
+
+function addLog(msg,type='') {
+  const el=document.getElementById('logArea');
+  const div=document.createElement('div');
+  div.className='log-entry '+type;
+  div.textContent=`[Gün ${state.day}] ${msg}`;
+  el.prepend(div);
+  if(el.children.length>40) el.lastChild.remove();
+}
+
+function gainXP(amount) {
+  state.king.xp+=amount;
+  if(state.king.xp>=state.king.xpNeeded){
+    state.king.xp-=state.king.xpNeeded;
+    state.king.level++;
+    state.king.xpNeeded=Math.round(state.king.xpNeeded*1.5);
+    showNotif(`👑 Seviye atladı! Lv.${state.king.level}`,'var(--gold2)');
+    addLog(`Kral Lv.${state.king.level}'e ulaştı!`,'gold');
+  }
+}
+
+// ===================== UPGRADE COST =====================
+function getUpgCost(u) {
+  return Object.fromEntries(Object.entries(u.baseCost).map(([k,v])=>[k, Math.round(v * Math.pow(1.6, u.times))]));
+}
+
+function getBuildCost(b) {
+  return Object.fromEntries(Object.entries(b.baseCost).map(([k,v])=>[k, Math.round(v * (1 + b.level * 0.5))]));
+}
+
+// ===================== RING PROGRESS =====================
+function makeRing(pct, canDo) {
+  const dash = RING_C * pct;
+  const color = canDo ? (pct>=1?'#27ae60':'var(--gold2)') : (pct>=0.5?'#e67e22':'#c0392b');
+  return `<svg viewBox="0 0 32 32">
+    <circle class="ring-bg" cx="16" cy="16" r="${RING_R}" stroke-dasharray="${RING_C}" stroke-dashoffset="0"/>
+    <circle class="ring-fill" cx="16" cy="16" r="${RING_R}" stroke="${color}" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C - dash}"/>
+  </svg>`;
+}
+
+function getAffordPct(cost) {
+  const pcts = Object.entries(cost).map(([k,v])=>Math.min(1,(state.resources[k]||0)/v));
+  return pcts.length ? Math.min(...pcts) : 1;
+}
+
+// ===================== RENDER =====================
+function renderResources() {
+  document.getElementById('resFood').textContent=Math.floor(state.resources.food);
+  document.getElementById('resWood').textContent=Math.floor(state.resources.wood);
+  document.getElementById('resStone').textContent=Math.floor(state.resources.stone);
+  document.getElementById('resGold').textContent=Math.floor(state.resources.gold);
+  document.getElementById('resPop').textContent=Math.floor(state.resources.pop);
+  document.getElementById('dayCounter').textContent=`🌙 Gün ${state.day}`;
+}
+
+function renderBuildings() {
+  const grid=document.getElementById('villageGrid');
+  grid.innerHTML=state.buildings.map(b=>{
+    const prodStr=Object.entries(b.prod).map(([k,v])=>`+${v}${resIcon(k)}/s`).join(' ');
+    if(b.locked){
+      const c=b.baseCost;
+      return `<div class="building-slot locked" onclick="tryUnlock('${b.id}')">
+        <div class="building-icon">🔒</div>
+        <div class="building-name">${b.name}</div>
+        <div class="building-locked-label">${costStr(c)}</div>
+      </div>`;
+    }
+    const upgCost=getBuildCost(b);
+    const maxed=b.level>=b.maxLevel;
+    const pct=maxed?1:getAffordPct(upgCost);
+    const canDo=!maxed&&canAfford(upgCost);
+    return `<div class="building-slot">
+      <div class="building-icon">${b.icon}</div>
+      <div class="building-name">${b.name}</div>
+      <div class="building-level">Lv.${b.level}/${b.maxLevel}</div>
+      ${prodStr?`<div class="building-prod">${prodStr}</div>`:''}
+      <button class="upgrade-ring-btn" onclick="openBuildUpgrade('${b.id}')" title="${maxed?'Maks seviye':costStr(upgCost)}">
+        ${makeRing(pct,canDo)}
+        <span style="position:relative;z-index:1;font-size:13px">${maxed?'✓':'⬆'}</span>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function renderArmy() {
+  const row=document.getElementById('armyRow');
+  row.innerHTML=state.units.filter(u=>!u.locked||u.count>0).map(u=>`
+    <div class="unit-card">
+      <div class="unit-icon">${u.icon}</div>
+      <div class="unit-info">
+        <div class="unit-name">${u.name}</div>
+        <div class="unit-count">×${u.count}</div>
+        <div class="unit-cost">${costStr(u.cost)}</div>
+      </div>
+      <button class="recruit-btn" onclick="recruitUnit('${u.id}')">+1</button>
+    </div>`).join('');
+}
+
+function renderEnemies() {
+  const el=document.getElementById('enemyList');
+  el.innerHTML=state.enemies.map(e=>{
+    if(e.defeated) return `<div class="enemy-card" style="opacity:0.4"><div class="enemy-icon">💀</div><div class="enemy-info"><div class="enemy-name" style="color:var(--muted)">${e.name} — YENİLDİ</div><div class="enemy-stats" style="color:var(--muted)">Yeniden doğuyor...</div></div></div>`;
+    const hpPct=(e.hp/e.maxHp)*100;
+    const rStr=Object.entries(e.reward).map(([k,v])=>`+${v}${resIcon(k)}`).join(' ');
+    return `<div class="enemy-card" onclick="attackEnemy('${e.id}')">
+      <div class="enemy-icon">${e.icon}</div>
+      <div class="enemy-info">
+        <div class="enemy-name">${e.name}</div>
+        <div class="enemy-hp-bar"><div class="enemy-hp-fill" style="width:${hpPct}%"></div></div>
+        <div class="enemy-stats">❤️ ${Math.ceil(e.hp)}/${e.maxHp} · 💥 ${e.power} · ${rStr}</div>
+      </div>
+      <button class="attack-btn">Saldır!</button>
+    </div>`;
+  }).join('');
+}
+
+function renderUpgrades() {
+  const el=document.getElementById('upgradeList');
+  el.innerHTML=state.upgrades.map(u=>{
+    const maxed=u.times>=u.maxTimes;
+    if(maxed) return `<div class="upgrade-item" style="opacity:0.5"><div class="upgrade-icon">${u.icon}</div><div class="upgrade-info"><div class="upgrade-name">${u.name}</div><div class="upgrade-desc" style="color:var(--green2)">✅ Maksimum</div></div></div>`;
+    const cost=getUpgCost(u);
+    const canDo=canAfford(cost);
+    return `<div class="upgrade-item">
+      <div class="upgrade-icon">${u.icon}</div>
+      <div class="upgrade-info">
+        <div class="upgrade-name">${u.name} (${u.times}/${u.maxTimes})</div>
+        <div class="upgrade-desc">${u.desc}</div>
+        <div class="upgrade-cost">${costStr(cost)}</div>
+      </div>
+      <button class="upgrade-btn" onclick="doUpgrade('${u.id}')" ${canDo?'':'disabled'}>Yap</button>
+    </div>`;
+  }).join('');
+}
+
+function renderQuests() {
+  const el=document.getElementById('questList');
+  if(state.quests.length===0){ el.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px;">Görevler yükleniyor...</div>'; return; }
+  el.innerHTML=state.quests.map(q=>{
+    if(q.claimed) return `<div class="quest-item" style="opacity:0.4"><div class="quest-name">✅ ${q.name}</div></div>`;
+    const cur=Math.min(getQuestCurrent(q),q.needed);
+    const pct=(cur/q.needed)*100;
+    const rStr=Object.entries(q.reward).map(([k,v])=>`+${v}${resIcon(k)}`).join(' ');
+    if(q.completed && !q.claimed){
+      return `<div class="quest-item" style="border-color:var(--green2)">
+        <div class="quest-name" style="color:var(--green2)">✨ ${q.name}</div>
+        <div class="quest-desc" style="color:var(--green2)">Tamamlandı!</div>
+        <div class="quest-reward">🎁 ${rStr}</div>
+        <button class="quest-claim-btn" onclick="claimQuest('${q.id}')">Ödülü Al</button>
+      </div>`;
+    }
+    return `<div class="quest-item">
+      <div class="quest-name">${q.name}</div>
+      <div class="quest-desc">${q.desc} (${cur}/${q.needed})</div>
+      <div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+      <div class="quest-reward">🎁 ${rStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderKing() {
+  const titles=['Köy Beyi','Derebey','Baron','Kont','Marki','Dük','Prens','Kral','İmparator','Efsane'];
+  document.getElementById('kingLevel').textContent=state.king.level;
+  document.getElementById('kingTitle').textContent=titles[Math.min(state.king.level-1,titles.length-1)];
+  document.getElementById('kingXpFill').style.width=(state.king.xp/state.king.xpNeeded*100)+'%';
+}
+
+function renderAll() {
+  renderResources();
+  renderBuildings();
+  renderArmy();
+  renderEnemies();
+  renderUpgrades();
+  renderQuests();
+  renderKing();
+}
+
+// ===================== ACTIONS =====================
+function openBuildUpgrade(id) {
+  const b=state.buildings.find(x=>x.id===id);
+  if(!b||b.locked) return;
+  if(b.level>=b.maxLevel){ showNotif('Maksimum seviye!','var(--muted)'); return; }
+  const cost=getBuildCost(b);
+  document.getElementById('modalTitle').textContent=`${b.icon} ${b.name} — Lv.${b.level}→${b.level+1}`;
+  document.getElementById('modalDesc').textContent=b.desc;
+  document.getElementById('modalCosts').innerHTML=Object.entries(cost).map(([k,v])=>`<div class="modal-cost ${state.resources[k]>=v?'':'cant-afford'}">${v} ${resIcon(k)}</div>`).join('');
+  const btn=document.getElementById('modalConfirm');
+  btn.disabled=!canAfford(cost);
+  btn.onclick=()=>{
+    if(!canAfford(cost)) return;
+    spend(cost);
+    b.level++;
+    Object.keys(b.prod).forEach(k=>b.prod[k]=parseFloat((b.prod[k]*1.3).toFixed(2)));
+    addLog(`${b.name} Lv.${b.level}'e yükseltildi!`,'gold');
+    gainXP(15+b.level*5);
+    closeModal(); renderAll();
+    showNotif(`${b.icon} ${b.name} yükseltildi! Lv.${b.level}`);
+    checkQuests();
+  };
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function tryUnlock(id) {
+  const b=state.buildings.find(x=>x.id===id);
+  if(!b||!b.locked) return;
+  document.getElementById('modalTitle').textContent=`🔓 ${b.name} İnşa Et`;
+  document.getElementById('modalDesc').textContent=b.desc;
+  const cost=b.baseCost;
+  document.getElementById('modalCosts').innerHTML=Object.entries(cost).map(([k,v])=>`<div class="modal-cost ${state.resources[k]>=v?'':'cant-afford'}">${v} ${resIcon(k)}</div>`).join('');
+  const btn=document.getElementById('modalConfirm');
+  btn.disabled=!canAfford(cost);
+  btn.onclick=()=>{
+    if(!canAfford(cost)) return;
+    spend(cost); b.locked=false; b.level=1;
+    if(b.id==='barracks'){ state.units.find(u=>u.id==='soldier').locked=false; state.units.find(u=>u.id==='archer').locked=false; }
+    if(b.id==='castle'){ state.units.find(u=>u.id==='knight').locked=false; state.units.find(u=>u.id==='mage').locked=false; }
+    addLog(`${b.name} inşa edildi!`,'gold');
+    gainXP(30); closeModal(); renderAll();
+    showNotif(`${b.icon} ${b.name} inşa edildi!`);
+    checkQuests();
+  };
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function recruitUnit(id) {
+  const u=state.units.find(x=>x.id===id);
+  if(!u||!canAfford(u.cost)){ showNotif('Yeterli kaynak yok!','var(--red2)'); return; }
+  spend(u.cost); u.count++;
+  addLog(`1 ${u.name} eğitildi.`);
+  gainXP(5); renderAll(); checkQuests();
+}
+
+function attackEnemy(id) {
+  const e=state.enemies.find(x=>x.id===id);
+  if(!e||e.defeated) return;
+  const power=state.units.reduce((s,u)=>{
+    let p=u.count*u.power;
+    if(state.boosts.unit_boost) p+=u.count*(state.boosts.unit_boost_amount||2);
+    return s+p;
+  },0);
+  if(power===0){ showNotif('Ordun yok! Asker topla!','var(--red2)'); return; }
+  const dmg=power*(0.8+Math.random()*0.4);
+  e.hp-=dmg;
+  addLog(`${e.name}'a ${Math.round(dmg)} hasar!`,'bad');
+  if(e.hp<=0){
+    e.hp=0; e.defeated=true;
+    e.respawnTick=state.tick+e.respawn;
+    Object.entries(e.reward).forEach(([k,v])=>state.resources[k]=(state.resources[k]||0)+v);
+    addLog(`${e.name} yenildi! Ödül kazanıldı!`,'good');
+    gainXP(50);
+    showNotif(`⚔️ ${e.name} yenildi!`,'var(--green2)');
+    checkQuests();
+  } else {
+    const edm=e.power*(0.5+Math.random()*0.5);
+    state.resources.food=Math.max(0,state.resources.food-edm);
+    addLog(`${e.name} karşılık verdi! ${Math.round(edm)} yiyecek kayıp.`,'bad');
+  }
+  renderAll();
+}
+
+function doUpgrade(id) {
+  const u=state.upgrades.find(x=>x.id===id);
+  if(!u||u.times>=u.maxTimes) return;
+  const cost=getUpgCost(u);
+  if(!canAfford(cost)){ showNotif('Yeterli kaynak yok!','var(--red2)'); return; }
+  spend(cost); u.times++;
+  state.boosts[u.effect]=(state.boosts[u.effect]||0)+1;
+  if(u.effect==='unit_boost') state.boosts.unit_boost_amount=(state.boosts.unit_boost_amount||0)+2;
+  addLog(`${u.name} yapıldı! (${u.times}/${u.maxTimes})`,'gold');
+  gainXP(25);
+  showNotif(`✅ ${u.name} tamamlandı!`);
+  renderAll();
+}
+
+// ===================== MODAL =====================
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+// ===================== DAY TRANSITION =====================
+function showDayTransition(from, to, cb) {
+  const el=document.getElementById('dayTransition');
+  document.getElementById('dtFrom').textContent=`Gün ${from}`;
+  document.getElementById('dtTo').textContent=`Gün ${to}`;
+  el.classList.add('show');
+  setTimeout(()=>{ el.classList.remove('show'); if(cb) cb(); }, 3200);
+}
+
+// ===================== GAME LOOP =====================
+let tickCount=0;
+state.tick=0;
+
+setInterval(()=>{
+  tickCount++;
+  state.tick++;
+
+  // Produce resources
+  state.buildings.forEach(b=>{
+    if(!b.locked&&b.level>0){
+      Object.entries(b.prod).forEach(([k,v])=>{
+        let prod=v;
+        const bst=state.boosts;
+        if(k==='food'&&bst.farm_boost)   prod*=(1+0.5*bst.farm_boost);
+        if(k==='wood'&&bst.lumber_boost) prod*=(1+0.5*bst.lumber_boost);
+        if(k==='stone'&&bst.quarry_boost)prod*=(1+0.5*bst.quarry_boost);
+        if(k==='gold'&&bst.gold_boost)   prod+=bst.gold_boost*2;
+        state.resources[k]=(state.resources[k]||0)+prod*0.5;
+      });
+    }
+  });
+
+  // Enemy respawn
+  state.enemies.forEach(e=>{
+    if(e.defeated&&state.tick>=e.respawnTick){
+      e.defeated=false;
+      e.hp=e.maxHp;
+      addLog(`${e.name} geri döndü!`,'bad');
+    }
+  });
+
+  // Day tick — %80 slower = every 100 ticks instead of 20
+  if(tickCount%100===0){
+    const oldDay=state.day;
+    state.day++;
+    state.resources.pop=Math.min(500,state.resources.pop+(state.boosts.defense_boost||0)*0.2+0.3);
+    state.resources.food=Math.max(0,state.resources.food-state.resources.pop*0.08);
+    checkQuests();
+    addLog(`Gün ${state.day} başladı.`);
+    // refresh quests every 3 days
+    if(state.day%3===0) generateQuests();
+    showDayTransition(oldDay,state.day);
+  }
+
+  renderResources();
+  if(tickCount%5===0){ renderQuests(); renderUpgrades(); renderBuildings(); }
+
+},1000);
+
+// ===================== INIT =====================
+generateQuests();
+addLog('Krallık kuruldu! Kaynaklarını topla ve büyü.','gold');
+addLog('İpucu: Binalardaki ⬆ butonuna tıkla, renk geliştirilip geliştirilmeyeceğini gösterir.','');
+renderAll();
+</script>
+</body>
+</html>
